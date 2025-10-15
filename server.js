@@ -229,3 +229,32 @@ console.log( POST /test-sms - Test SMS);
 console.log( POST /webhook/zapier/thumbtack - Main webhook);
 });
 
+
+## **📄 File 2: package.json**
+**Replace your entire package.json file with this content:**
+
+```json
+{
+  "name": "zapier-thumbtack-webhook",
+  "version": "1.0.0",
+  "description": "Webhook server for processing Thumbtack leads via Zapier with SMS notifications",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "body-parser": "^1.20.2",
+    "twilio": "^4.19.0"
+  },
+  "keywords": [
+    "webhook",
+    "zapier",
+    "thumbtack",
+    "sms",
+    "twilio"
+  ],
+  "author": "Your Name",
+  "license": "ISC"
+}
