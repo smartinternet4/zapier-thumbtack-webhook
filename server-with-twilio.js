@@ -1,235 +1,231 @@
 const express = require('express');
 const bodyParser = require('body-parser');
-const crypto = require('crypto');
 const twilio = require('twilio');
 
 const app = express();
-const port = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3000;
 
-// Twilio Configuration
-const TWILIO_ACCOUNT_SID = process.env.TWILIO_ACCOUNT_SID;
-const TWILIO_AUTH_TOKEN = process.env.TWILIO_AUTH_TOKEN;
-const TWILIO_PHONE_NUMBER = process.env.TWILIO_PHONE_NUMBER; // Your Twilio phone number
-const YOUR_PHONE_NUMBER = process.env.YOUR_PHONE_NUMBER;     // Your personal phone number
+// Twilio configuration
+const accountSid = process.env.TWILIO_ACCOUNT_SID;
+const authToken = process.env.TWILIO_AUTH_TOKEN;
+const twilioPhoneNumber = process.env.TWILIO_PHONE_NUMBER;
+const yourPhoneNumber = process.env.YOUR_PHONE_NUMBER;
 
 let twilioClient;
-if (TWILIO_ACCOUNT_SID && TWILIO_AUTH_TOKEN) {
-  twilioClient = twilio(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN);
-} else {
-  console.log('Twilio credentials not configured - SMS functionality disabled');
+if (accountSid && authToken) {
+    twilioClient = twilio(accountSid, authToken);
 }
 
-// Middleware
 app.use(bodyParser.json());
-app.use(express.static('public'));
-
-// Helper function to send SMS
-async function sendSMSNotification(leadData) {
-  if (!twilioClient) {
-    console.log('Twilio not configured - cannot send SMS');
-    return { success: false, error: 'Twilio not configured' };
-  }
-
-  try {
-    // Send notification to you about the new lead
-    const message = `🔥 NEW THUMBTACK LEAD!
-    
-Customer: ${leadData.customer_name || 'Unknown'}
-Phone: ${leadData.phone_number || 'Not provided'}
-Email: ${leadData.email || 'Not provided'}
-Service: ${leadData.service_type || 'Not specified'}
-Description: ${leadData.description || 'No description'}
-Location: ${leadData.address || 'Not provided'}
-
-Respond ASAP to convert this lead!`;
-
-    const result = await twilioClient.messages.create({
-      body: message,
-      from: TWILIO_PHONE_NUMBER,
-      to: YOUR_PHONE_NUMBER
-    });
-
-    console.log('SMS sent successfully:', result.sid);
-    return { success: true, messageSid: result.sid };
-
-  } catch (error) {
-    console.error('Failed to send SMS:', error);
-    return { success: false, error: error.message };
-  }
-}
-
-// Helper function to send SMS to customer (optional)
-async function sendCustomerSMS(leadData) {
-  if (!twilioClient || !leadData.phone_number) {
-    return { success: false, error: 'Twilio not configured or no phone number' };
-  }
-
-  try {
-    const message = `Hi ${leadData.customer_name || 'there'}! Thanks for your ${leadData.service_type || 'service'} request on Thumbtack. I'll get back to you within 30 minutes with a quote. - Your Local Pro`;
-
-    const result = await twilioClient.messages.create({
-      body: message,
-      from: TWILIO_PHONE_NUMBER,
-      to: leadData.phone_number
-    });
-
-    console.log('Customer SMS sent successfully:', result.sid);
-    return { success: true, messageSid: result.sid };
-
-  } catch (error) {
-    console.error('Failed to send customer SMS:', error);
-    return { success: false, error: error.message };
-  }
-}
+app.use(bodyParser.urlencoded({ extended: true }));
 
 // Health check endpoint
 app.get('/health', (req, res) => {
-  res.status(200).json({ 
-    status: 'OK', 
-    timestamp: new Date().toISOString(),
-    service: 'Thumbtack Webhook Integration',
-    twilio_configured: !!twilioClient
-  });
+    res.json({ 
+        status: 'healthy', 
+        timestamp: new Date().toISOString(),
+        service: 'Thumbtack Webhook Integration',
+        twilio_configured: !!twilioClient
+    });
 });
 
-// Privacy Policy route
+// Privacy Policy endpoint for Thumbtack OAuth
 app.get('/privacy', (req, res) => {
-  res.setHeader('Content-Type', 'text/html');
-  res.send(`
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Privacy Policy - Thumbtack Webhook Integration</title>
-    <style>
-        body { font-family: Arial, sans-serif; margin: 40px; line-height: 1.6; }
-        h1 { color: #333; }
-        h2 { color: #666; margin-top: 30px; }
-        p { margin-bottom: 15px; }
-    </style>
-</head>
-<body>
-# Privacy Policy for Thumbtack Webhook Integration Service<br><br>**Service URL:** https://zapier-thumbtack-webhook-production.railway.app<br><br>## Data Collection  <br>Thumbtack Webhook Integration Service collects customer contact information including name, phone number, and email address, as well as service requests and lead details necessary to facilitate lead management and notifications.<br><br>## Data Usage  <br>Collected data is used solely for processing new leads and sending timely notifications to service professionals to ensure efficient lead management.<br><br>## Data Retention  <br>Personal data is processed temporarily and is not stored long-term. No personal information is retained beyond the immediate processing required for lead management and notification.<br><br>## User Rights  <br>Users have the right to access, correct, or request deletion of their personal data processed by the service. Since no long-term storage occurs, data retention is limited to processing periods only. Users may contact the service provider for any inquiries or requests regarding their personal information.
-</body>
-</html>
+    res.send(`
+        <!DOCTYPE html>
+        <html lang="en">
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Privacy Policy - Thumbtack Integration</title>
+        <style>
+            body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; line-height: 1.6; }
+            h1, h2 { color: #333; }
+            .last-updated { color: #666; font-style: italic; }
+        </style>
+        <h1>Privacy Policy</h1>
+        <p class="last-updated">Last updated: October 2024</p>
+        
+        <h2>Information We Collect</h2>
+        <p>We collect lead information from Thumbtack including customer names, phone numbers, and service requests to provide SMS notifications to our users.</p>
+        
+        <h2>How We Use Your Information</h2>
+        <p>We use the collected information solely to:</p>
+        <ul>
+            <li>Send SMS notifications about new leads</li>
+            <li>Process webhook data from Thumbtack</li>
+            <li>Provide lead management services</li>
+        </ul>
+        
+        <h2>Data Security</h2>
+        <p>We implement appropriate security measures to protect your information. Data is transmitted securely and stored only as long as necessary to provide our services.</p>
+        
+        <h2>Contact Us</h2>
+        <p>If you have questions about this Privacy Policy, please contact us through our support channels.</p>
+    </html>
 `);
 });
 
-// Terms of Service route
+// Terms of Service endpoint for Thumbtack OAuth
 app.get('/terms', (req, res) => {
-  res.setHeader('Content-Type', 'text/html');
-  res.send(`
+res.send(`
 <!DOCTYPE html>
-<html>
-<head>
-    <title>Terms of Service - Thumbtack Webhook Integration</title>
-    <style>
-        body { font-family: Arial, sans-serif; margin: 40px; line-height: 1.6; }
-        h1 { color: #333; }
-        h2 { color: #666; margin-top: 30px; }
-        p { margin-bottom: 15px; }
-    </style>
-</head>
-<body>
-# Terms of Service<br><br>## 1. Service Description  <br>Thumbtack Webhook Integration Service provides automated processing of Thumbtack leads through webhook integration. The service is accessible via https://zapier-thumbtack-webhook-production.railway.app and is designed to streamline lead management by automating data transfer and processing.<br><br>## 2. User Responsibilities  <br>Users must ensure the proper use and security of their API credentials at all times. Compliance with Thumbtack’s terms of service is mandatory. Users are responsible for maintaining confidentiality of their access information and for all activities conducted through their accounts.<br><br>## 3. Limitations of Liability  <br>Service availability is subject to operational conditions and may experience interruptions. Data processing capabilities have inherent limitations and the service does not guarantee uninterrupted or error-free operation. The service owner is not liable for any damages resulting from service downtime, data loss, or processing errors.<br><br>## 4. Contact Information  <br>For inquiries or support, please contact the service owner directly using the provided contact information.
-</body>
-</html>
+<html lang="en">
+
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Terms of Service - Thumbtack Integration</title>
+        <style>
+            body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; line-height: 1.6; }
+            h1, h2 { color: #333; }
+            .last-updated { color: #666; font-style: italic; }
+        </style>
+        <h1>Terms of Service</h1>
+        <p class="last-updated">Last updated: October 2024</p>
+        
+        <h2>Service Description</h2>
+        <p>Our service provides SMS notifications for Thumbtack leads through webhook integration.</p>
+        
+        <h2>Acceptable Use</h2>
+        <p>You may use our service only for legitimate business purposes related to managing Thumbtack leads. You agree not to:</p>
+        <ul>
+            <li>Use the service for spam or unsolicited communications</li>
+            <li>Attempt to circumvent security measures</li>
+            <li>Interfere with the operation of the service</li>
+        </ul>
+        
+        <h2>Service Availability</h2>
+        <p>We strive to maintain high availability but do not guarantee uninterrupted service. We reserve the right to modify or discontinue the service with notice.</p>
+        
+        <h2>Limitation of Liability</h2>
+        <p>Our liability is limited to the maximum extent permitted by law. We are not responsible for any indirect or consequential damages.</p>
+        
+        <h2>Contact</h2>
+        <p>For questions about these Terms, please contact us through our support channels.</p>
+    </html>
 `);
 });
 
-// OAuth callback route (for Thumbtack API integration)
+// OAuth callback endpoint (placeholder for Thumbtack OAuth)
 app.get('/auth/callback', (req, res) => {
-  const { code, state } = req.query;
-  
-  if (!code) {
-    return res.status(400).json({ error: 'Authorization code is required' });
-  }
-  
-  // TODO: Exchange code for access token with Thumbtack API
-  res.json({ 
-    message: 'OAuth callback received',
-    code: code,
-    state: state,
-    timestamp: new Date().toISOString()
-  });
+res.json({
+status: 'callback_received',
+query: req.query,
+message: 'OAuth callback endpoint is ready'
+});
 });
 
 // Test SMS endpoint
-app.post('/test-sms', (req, res) => {
-  const testData = {
-    customer_name: 'Test Customer',
-    phone_number: req.body.phone_number || YOUR_PHONE_NUMBER,
-    email: 'test@example.com',
-    service_type: 'House Cleaning',
-    description: 'Test SMS from webhook',
-    address: '123 Test St, Test City'
-  };
+app.post('/test-sms', async (req, res) => {
+if (!twilioClient) {
+return res.status(500).json({
+error: 'Twilio not configured',
+message: 'Please check your Twilio environment variables'
+});
+}
 
-  sendSMSNotification(testData)
-    .then(result => {
-      res.json({
-        message: 'Test SMS sent',
-        result: result,
-        timestamp: new Date().toISOString()
-      });
-    })
-    .catch(error => {
-      res.status(500).json({
-        error: 'Failed to send test SMS',
-        details: error.message
-      });
+const testPhone = req.body.phone_number || yourPhoneNumber;
+
+try {
+    const message = await twilioClient.messages.create({
+        body: '🧪 Test SMS from your Thumbtack webhook! SMS notifications are working correctly. 🎉',
+        from: twilioPhoneNumber,
+        to: testPhone
     });
+
+    res.json({ 
+        success: true, 
+        messageSid: message.sid,
+        to: testPhone,
+        message: 'Test SMS sent successfully!'
+    });
+} catch (error) {
+    console.error('SMS Error:', error);
+    res.status(500).json({ 
+        error: 'Failed to send SMS',
+        details: error.message 
+    });
+}
 });
 
-// Main webhook endpoint for Thumbtack leads
+// Main webhook endpoint for Zapier/Thumbtack integration
 app.post('/webhook/zapier/thumbtack', async (req, res) => {
-  try {
-    // Verify webhook secret
-    const webhookSecret = process.env.WEBHOOK_SECRET || 'test-secret-123';
-    const receivedSecret = req.headers['x-webhook-secret'];
+console.log('Webhook received:', JSON.stringify(req.body, null, 2));
+console.log('Headers:', JSON.stringify(req.headers, null, 2));
+
+try {
+    // Extract lead information from the webhook payload
+    const leadData = req.body;
     
-    if (receivedSecret !== webhookSecret) {
-      console.log('Webhook authentication failed');
-      return res.status(401).json({ error: 'Unauthorized' });
+    // Send SMS notification if Twilio is configured
+    if (twilioClient && yourPhoneNumber) {
+        const smsBody = `🏠 NEW THUMBTACK LEAD!
+👤 Customer: ${leadData.customer_name || 'Unknown'}
+📞 Phone: ${leadData.phone_number || 'Not provided'}
+🔧 Service: ${leadData.service_type || 'Not specified'}
+📍 Location: ${leadData.location || 'Not provided'}
+💰 Budget: ${leadData.budget || 'Not specified'}
+📝 Details: ${leadData.description || 'No details provided'}
+
+⏰ Respond quickly to win this lead!`;
+
+        try {
+            const message = await twilioClient.messages.create({
+                body: smsBody,
+                from: twilioPhoneNumber,
+                to: yourPhoneNumber
+            });
+            
+            console.log('SMS sent successfully:', message.sid);
+        } catch (smsError) {
+            console.error('SMS Error:', smsError);
+            // Continue processing even if SMS fails
+        }
     }
 
-    // Process the Thumbtack lead data
-    const leadData = req.body;
-    console.log('Received Thumbtack lead:', JSON.stringify(leadData, null, 2));
-    
-    // Send SMS notification about new lead
-    const smsResult = await sendSMSNotification(leadData);
-    console.log('SMS notification result:', smsResult);
-
-    // Optionally send SMS to customer
-    // const customerSmsResult = await sendCustomerSMS(leadData);
-    // console.log('Customer SMS result:', customerSmsResult);
-    
-    // Respond to acknowledge receipt
-    res.status(200).json({ 
-      message: 'Lead processed successfully',
-      leadId: leadData.customer_name || 'unknown',
-      smsNotification: smsResult,
-      timestamp: new Date().toISOString()
+    // Respond to Zapier/webhook caller
+    res.json({
+        success: true,
+        message: 'Lead processed successfully',
+        leadId: leadData.id || `lead_${Date.now()}`,
+        timestamp: new Date().toISOString(),
+        sms_sent: !!twilioClient
     });
-    
-  } catch (error) {
+
+} catch (error) {
     console.error('Webhook processing error:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
+    res.status(500).json({
+        success: false,
+        error: 'Failed to process webhook',
+        details: error.message
+    });
+}
 });
 
-// Start server
-app.listen(port, () => {
-  console.log(`Thumbtack webhook server running on port ${port}`);
-  console.log(`Health check: http://localhost:${port}/health`);
-  console.log(`Privacy Policy: http://localhost:${port}/privacy`);
-  console.log(`Terms of Service: http://localhost:${port}/terms`);
-  console.log(`Test SMS: POST http://localhost:${port}/test-sms`);
-  console.log(`Twilio configured: ${!!twilioClient}`);
+// Catch-all endpoint for debugging
+app.use('*', (req, res) => {
+res.status(404).json({
+error: 'Endpoint not found',
+method: req.method,
+path: req.originalUrl,
+available_endpoints: {
+'GET /health': 'Health check',
+'GET /privacy': 'Privacy policy for OAuth',
+'GET /terms': 'Terms of service for OAuth',
+'GET /auth/callback': 'OAuth callback',
+'POST /test-sms': 'Test SMS functionality',
+'POST /webhook/zapier/thumbtack': 'Main webhook endpoint'
+}
+});
 });
 
-// Handle graceful shutdown
-process.on('SIGINT', () => {
-  console.log('Shutting down webhook server...');
-  process.exit(0);
+app.listen(PORT, () => {
+console.log(Thumbtack webhook server running on port ${PORT});
+console.log(Twilio configured: ${!!twilioClient});
+console.log('Available endpoints:');
+console.log( GET /health - Health check);
+console.log( GET /privacy - Privacy policy);
+console.log( GET /terms - Terms of service);
+console.log( POST /test-sms - Test SMS);
+console.log( POST /webhook/zapier/thumbtack - Main webhook);
 });
+
